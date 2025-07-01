@@ -13,7 +13,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
 
-// Static bins data
+// Static bins
 const dustbinData = {
   'bin-002': { name: 'Library Cafe', location: 'Near Central Library, VVCE', fillLevel: 66, status: 'Medium' },
   'bin-003': { name: 'Hostel Block A', location: 'Behind Boys Hostel A, VVCE', fillLevel: 85, status: 'High' },
@@ -25,38 +25,33 @@ const dustbinData = {
   'bin-009': { name: 'Food Court VVCE', location: 'Main Food Court, VVCE Campus', fillLevel: 100, status: 'Full' }
 };
 
-// Fetch live data for bin-001 from Firebase
-const ref = database.ref('ecoflow/bin-001');
-ref.on('value', (snapshot) => {
-  const data = snapshot.val();
-  if (data) {
-    dustbinData['bin-001'] = {
-      name: data.name || 'VVCE Campus',
-      location: data.location || 'Main Entrance, VVCE Mysuru',
-      fillLevel: data.fillLevel || 0,
-      status: data.status || 'Low'
-    };
-
-    // Only update homepage if it's loaded
-    if (document.querySelector('.dustbin-grid')) {
-      updateHomePageCards();
-    }
-
-    // If we're on details page for bin-001, update it
-    const urlParams = new URLSearchParams(window.location.search);
-    const currentId = urlParams.get('id');
-    if (currentId === 'bin-001' && document.querySelector('.details-container')) {
-      updateDustbinDetails('bin-001');
-    }
-  }
-});
-
 document.addEventListener('DOMContentLoaded', () => {
-  if (document.querySelector('.details-container')) {
-    initDetailsPage();
-  } else if (document.querySelector('.dustbin-grid')) {
-    initHomePage();
-  }
+  const isDetailsPage = document.querySelector('.details-container');
+  const isHomePage = document.querySelector('.dustbin-grid');
+
+  if (isDetailsPage) initDetailsPage();
+  if (isHomePage) initHomePage();
+
+  // Firebase listener (moved here!)
+  const ref = database.ref('ecoflow/bin-001');
+  ref.on('value', (snapshot) => {
+    const data = snapshot.val();
+    if (data) {
+      dustbinData['bin-001'] = {
+        name: data.name || 'VVCE Campus',
+        location: data.location || 'Main Entrance, VVCE Mysuru',
+        fillLevel: data.fillLevel || 0,
+        status: data.status || 'Low'
+      };
+
+      if (isHomePage) updateHomePageCards();
+      const urlParams = new URLSearchParams(window.location.search);
+      const currentId = urlParams.get('id');
+      if (isDetailsPage && currentId === 'bin-001') {
+        updateDustbinDetails('bin-001');
+      }
+    }
+  });
 
   function initHomePage() {
     updateHomePageCards();
@@ -70,9 +65,15 @@ document.addEventListener('DOMContentLoaded', () => {
       if (data) {
         const statusSpan = card.querySelector('.status-low, .status-medium, .status-high, .status-full');
         const fillLevelSpan = card.querySelector('.fill-level');
-        statusSpan.textContent = data.status;
-        statusSpan.className = `status-${data.status.toLowerCase()}`;
-        fillLevelSpan.textContent = `${data.fillLevel}%`;
+
+        if (statusSpan) {
+          statusSpan.textContent = data.status;
+          statusSpan.className = `status-${data.status.toLowerCase()}`;
+        }
+
+        if (fillLevelSpan) {
+          fillLevelSpan.textContent = `${data.fillLevel}%`;
+        }
       }
     });
   }
