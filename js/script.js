@@ -1,3 +1,14 @@
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyAWHDSkFJRflliW3LXuKAbNXKiwGw8W2C8",
+  authDomain: "eco-flow-bin.firebaseapp.com",
+  databaseURL: "https://eco-flow-bin-default-rtdb.firebaseio.com",
+  projectId: "eco-flow-bin",
+  storageBucket: "eco-flow-bin.firebasestorage.app",
+  messagingSenderId: "704131179397",
+  appId: "1:704131179397:web:5eb3737d854b0125cddaec",
+  measurementId: "G-R2B073XGD8"
+};
 document.addEventListener('DOMContentLoaded', () => {
 
     // --- Data Structure ---
