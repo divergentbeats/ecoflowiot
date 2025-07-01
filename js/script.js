@@ -13,7 +13,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
 
-// Live bin-001 connection
+// Static bin data (except bin-001 which is live)
 const dustbinData = {
   'bin-002': { name: 'Library Cafe', location: 'Near Central Library, VVCE', fillLevel: 66, status: 'Medium' },
   'bin-003': { name: 'Hostel Block A', location: 'Behind Boys Hostel A, VVCE', fillLevel: 85, status: 'High' },
@@ -25,7 +25,7 @@ const dustbinData = {
   'bin-009': { name: 'Food Court VVCE', location: 'Main Food Court, VVCE Campus', fillLevel: 100, status: 'Full' }
 };
 
-// Connect bin-001 to Firebase
+// Add Firebase listener for bin-001
 const ref = database.ref('ecoflow/bin-001');
 ref.on('value', (snapshot) => {
   const data = snapshot.val();
@@ -36,7 +36,13 @@ ref.on('value', (snapshot) => {
       fillLevel: data.fillLevel || 0,
       status: data.status || 'Low'
     };
-    updateHomePageCards();
+
+    // Update appropriate view
+    if (document.querySelector('.details-container') && getCurrentBinId() === 'bin-001') {
+      updateDustbinDetails('bin-001');
+    } else {
+      updateHomePageCards();
+    }
   }
 });
 
@@ -49,6 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function initHomePage() {
     updateHomePageCards();
+    setInterval(updateHomePageCards, 2000);
   }
 
   function updateHomePageCards() {
@@ -59,36 +66,33 @@ document.addEventListener('DOMContentLoaded', () => {
       if (data) {
         const statusSpan = card.querySelector('.status-low, .status-medium, .status-high, .status-full');
         const fillLevelSpan = card.querySelector('.fill-level');
-
-        statusSpan.textContent = data.status;
-        statusSpan.className = `status-${data.status.toLowerCase()}`;
-        fillLevelSpan.textContent = `${data.fillLevel}%`;
+        if (statusSpan) {
+          statusSpan.textContent = data.status;
+          statusSpan.className = `status-${data.status.toLowerCase()}`;
+        }
+        if (fillLevelSpan) {
+          fillLevelSpan.textContent = `${data.fillLevel}%`;
+        }
       }
     });
   }
 
   function initDetailsPage() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const binId = urlParams.get('id');
+    const binId = getCurrentBinId();
     if (binId && dustbinData[binId]) {
       updateDustbinDetails(binId);
-      setInterval(() => {
-        if (binId !== 'bin-001') simulateRealTimeData(binId);
-        updateDustbinDetails(binId);
-      }, 2000);
+
+      // If it's not bin-001, simulate updates
+      if (binId !== 'bin-001') {
+        setInterval(() => {
+          simulateRealTimeData(binId);
+          updateDustbinDetails(binId);
+        }, 2000);
+      }
     } else {
       const header = document.querySelector('.details-header h1');
       if (header) header.textContent = "Dustbin Not Found";
     }
-  }
-
-  function simulateRealTimeData(binId) {
-    if (binId === 'bin-001') return;
-    let currentFill = dustbinData[binId].fillLevel;
-    let newFill = currentFill + Math.floor(Math.random() * 5) - 2;
-    newFill = Math.max(0, Math.min(100, newFill));
-    dustbinData[binId].fillLevel = newFill;
-    dustbinData[binId].status = getStatusFromFillLevel(newFill);
   }
 
   function updateDustbinDetails(binId) {
@@ -116,10 +120,23 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('progress-bar-inner').style.backgroundColor = statusColor;
   }
 
+  function simulateRealTimeData(binId) {
+    let currentFill = dustbinData[binId].fillLevel;
+    let newFill = currentFill + Math.floor(Math.random() * 5) - 2;
+    newFill = Math.max(0, Math.min(100, newFill));
+    dustbinData[binId].fillLevel = newFill;
+    dustbinData[binId].status = getStatusFromFillLevel(newFill);
+  }
+
   function getStatusFromFillLevel(level) {
     if (level >= 95) return 'Full';
     if (level >= 75) return 'High';
     if (level >= 40) return 'Medium';
     return 'Low';
+  }
+
+  function getCurrentBinId() {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get('id');
   }
 });
