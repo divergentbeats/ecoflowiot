@@ -4,15 +4,16 @@ const firebaseConfig = {
   authDomain: "eco-flow-bin.firebaseapp.com",
   databaseURL: "https://eco-flow-bin-default-rtdb.firebaseio.com",
   projectId: "eco-flow-bin",
-  storageBucket: "eco-flow-bin.firebasestorage.app",
+  storageBucket: "eco-flow-bin.appspot.com",
   messagingSenderId: "704131179397",
   appId: "1:704131179397:web:5eb3737d854b0125cddaec",
   measurementId: "G-R2B073XGD8"
 };
+
 firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
 
-// Dustbin data — only bin-001 is live, rest are static
+// Live bin-001 connection
 const dustbinData = {
   'bin-002': { name: 'Library Cafe', location: 'Near Central Library, VVCE', fillLevel: 66, status: 'Medium' },
   'bin-003': { name: 'Hostel Block A', location: 'Behind Boys Hostel A, VVCE', fillLevel: 85, status: 'High' },
@@ -24,7 +25,7 @@ const dustbinData = {
   'bin-009': { name: 'Food Court VVCE', location: 'Main Food Court, VVCE Campus', fillLevel: 100, status: 'Full' }
 };
 
-// Connect bin-001 to Firebase live data
+// Connect bin-001 to Firebase
 const ref = database.ref('ecoflow/bin-001');
 ref.on('value', (snapshot) => {
   const data = snapshot.val();
@@ -35,7 +36,7 @@ ref.on('value', (snapshot) => {
       fillLevel: data.fillLevel || 0,
       status: data.status || 'Low'
     };
-    updateHomePageCards(); // update UI if needed
+    updateHomePageCards();
   }
 });
 
@@ -69,22 +70,20 @@ document.addEventListener('DOMContentLoaded', () => {
   function initDetailsPage() {
     const urlParams = new URLSearchParams(window.location.search);
     const binId = urlParams.get('id');
-
     if (binId && dustbinData[binId]) {
       updateDustbinDetails(binId);
       setInterval(() => {
-        simulateRealTimeData(binId);
+        if (binId !== 'bin-001') simulateRealTimeData(binId);
         updateDustbinDetails(binId);
       }, 2000);
     } else {
-      const detailsHeader = document.querySelector('.details-header h1');
-      if (detailsHeader) detailsHeader.textContent = "Dustbin Not Found";
+      const header = document.querySelector('.details-header h1');
+      if (header) header.textContent = "Dustbin Not Found";
     }
   }
 
   function simulateRealTimeData(binId) {
-    if (binId === 'bin-001') return; // Do not simulate live bin
-
+    if (binId === 'bin-001') return;
     let currentFill = dustbinData[binId].fillLevel;
     let newFill = currentFill + Math.floor(Math.random() * 5) - 2;
     newFill = Math.max(0, Math.min(100, newFill));
