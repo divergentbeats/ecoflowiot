@@ -13,7 +13,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
 
-// Static bin data (except bin-001 which is live)
+// Live bin-001 connection
 const dustbinData = {
   'bin-002': { name: 'Library Cafe', location: 'Near Central Library, VVCE', fillLevel: 66, status: 'Medium' },
   'bin-003': { name: 'Hostel Block A', location: 'Behind Boys Hostel A, VVCE', fillLevel: 85, status: 'High' },
@@ -25,39 +25,8 @@ const dustbinData = {
   'bin-009': { name: 'Food Court VVCE', location: 'Main Food Court, VVCE Campus', fillLevel: 100, status: 'Full' }
 };
 
-// Add Firebase listener for bin-001
-const ref = database.ref('ecoflow/bin-001');
-ref.on('value', (snapshot) => {
-  const data = snapshot.val();
-  if (data) {
-    dustbinData['bin-001'] = {
-      name: data.name || 'VVCE Campus',
-      location: data.location || 'Main Entrance, VVCE Mysuru',
-      fillLevel: data.fillLevel || 0,
-      status: data.status || 'Low'
-    };
-
-    // Update appropriate view
-    if (document.querySelector('.details-container') && getCurrentBinId() === 'bin-001') {
-      updateDustbinDetails('bin-001');
-    } else {
-      updateHomePageCards();
-    }
-  }
-});
-
 document.addEventListener('DOMContentLoaded', () => {
-  if (document.querySelector('.details-container')) {
-    initDetailsPage();
-  } else if (document.querySelector('.dustbin-grid')) {
-    initHomePage();
-  }
-
-  function initHomePage() {
-    updateHomePageCards();
-    setInterval(updateHomePageCards, 2000);
-  }
-
+  // Define the homepage updater here
   function updateHomePageCards() {
     const cards = document.querySelectorAll('.dustbin-card');
     cards.forEach(card => {
@@ -66,61 +35,55 @@ document.addEventListener('DOMContentLoaded', () => {
       if (data) {
         const statusSpan = card.querySelector('.status-low, .status-medium, .status-high, .status-full');
         const fillLevelSpan = card.querySelector('.fill-level');
-        if (statusSpan) {
-          statusSpan.textContent = data.status;
-          statusSpan.className = `status-${data.status.toLowerCase()}`;
-        }
-        if (fillLevelSpan) {
-          fillLevelSpan.textContent = `${data.fillLevel}%`;
-        }
+        statusSpan.textContent = data.status;
+        statusSpan.className = `status-${data.status.toLowerCase()}`;
+        fillLevelSpan.textContent = `${data.fillLevel}%`;
       }
     });
   }
 
+  // Setup Firebase listener for bin-001
+  const ref = database.ref('ecoflow/bin-001');
+  ref.on('value', (snapshot) => {
+    const data = snapshot.val();
+    if (data) {
+      dustbinData['bin-001'] = {
+        name: data.name || 'VVCE Campus',
+        location: data.location || 'Main Entrance, VVCE Mysuru',
+        fillLevel: data.fillLevel || 0,
+        status: data.status || 'Low'
+      };
+      updateHomePageCards();
+    }
+  });
+
+  if (document.querySelector('.details-container')) {
+    initDetailsPage();
+  } else if (document.querySelector('.dustbin-grid')) {
+    initHomePage();
+  }
+
+  function initHomePage() {
+    updateHomePageCards();
+  }
+
   function initDetailsPage() {
-    const binId = getCurrentBinId();
+    const urlParams = new URLSearchParams(window.location.search);
+    const binId = urlParams.get('id');
     if (binId && dustbinData[binId]) {
       updateDustbinDetails(binId);
-
-      // If it's not bin-001, simulate updates
-      if (binId !== 'bin-001') {
-        setInterval(() => {
-          simulateRealTimeData(binId);
-          updateDustbinDetails(binId);
-        }, 2000);
-      }
+      setInterval(() => {
+        if (binId !== 'bin-001') simulateRealTimeData(binId);
+        updateDustbinDetails(binId);
+      }, 2000);
     } else {
       const header = document.querySelector('.details-header h1');
       if (header) header.textContent = "Dustbin Not Found";
     }
   }
 
-  function updateDustbinDetails(binId) {
-    const data = dustbinData[binId];
-    if (!data) return;
-
-    const { name, fillLevel, status } = data;
-    const statusClass = `status-${status.toLowerCase()}`;
-    const statusColor = getComputedStyle(document.documentElement).getPropertyValue(`--${statusClass}`);
-
-    document.getElementById('dustbin-id').textContent = `Dustbin ${name}`;
-    document.getElementById('dustbin-status').textContent = status;
-    document.getElementById('dustbin-status').className = statusClass;
-
-    const fillValueElement = document.getElementById('fill-level-value');
-    fillValueElement.textContent = fillLevel;
-    fillValueElement.parentElement.style.color = statusColor;
-
-    fillValueElement.parentElement.classList.add('updated');
-    setTimeout(() => {
-      fillValueElement.parentElement.classList.remove('updated');
-    }, 500);
-
-    document.getElementById('progress-bar-inner').style.width = `${fillLevel}%`;
-    document.getElementById('progress-bar-inner').style.backgroundColor = statusColor;
-  }
-
   function simulateRealTimeData(binId) {
+    if (binId === 'bin-001') return;
     let currentFill = dustbinData[binId].fillLevel;
     let newFill = currentFill + Math.floor(Math.random() * 5) - 2;
     newFill = Math.max(0, Math.min(100, newFill));
@@ -128,15 +91,30 @@ document.addEventListener('DOMContentLoaded', () => {
     dustbinData[binId].status = getStatusFromFillLevel(newFill);
   }
 
+  function updateDustbinDetails(binId) {
+    const data = dustbinData[binId];
+    if (!data) return;
+    const { name, fillLevel, status } = data;
+    const statusClass = `status-${status.toLowerCase()}`;
+    const statusColor = getComputedStyle(document.documentElement).getPropertyValue(`--${statusClass}`);
+    document.getElementById('dustbin-id').textContent = `Dustbin ${name}`;
+    document.getElementById('dustbin-status').textContent = status;
+    document.getElementById('dustbin-status').className = statusClass;
+    const fillValueElement = document.getElementById('fill-level-value');
+    fillValueElement.textContent = fillLevel;
+    fillValueElement.parentElement.style.color = statusColor;
+    fillValueElement.parentElement.classList.add('updated');
+    setTimeout(() => {
+      fillValueElement.parentElement.classList.remove('updated');
+    }, 500);
+    document.getElementById('progress-bar-inner').style.width = `${fillLevel}%`;
+    document.getElementById('progress-bar-inner').style.backgroundColor = statusColor;
+  }
+
   function getStatusFromFillLevel(level) {
     if (level >= 95) return 'Full';
     if (level >= 75) return 'High';
     if (level >= 40) return 'Medium';
     return 'Low';
-  }
-
-  function getCurrentBinId() {
-    const urlParams = new URLSearchParams(window.location.search);
-    return urlParams.get('id');
   }
 });
