@@ -1,2 +1,2 @@
 # ecoflowiot
-This repository is used for the exploration project.
+This project served as our exploration lab idea in the college.
