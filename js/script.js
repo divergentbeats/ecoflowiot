@@ -13,7 +13,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
 
-// Static bin data (except bin-001 which is live)
+// Static bins
 const dustbinData = {
   'bin-002': { name: 'Library Cafe', location: 'Near Central Library, VVCE', fillLevel: 66, status: 'Medium' },
   'bin-003': { name: 'Hostel Block A', location: 'Behind Boys Hostel A, VVCE', fillLevel: 85, status: 'High' },
@@ -25,37 +25,36 @@ const dustbinData = {
   'bin-009': { name: 'Food Court VVCE', location: 'Main Food Court, VVCE Campus', fillLevel: 100, status: 'Full' }
 };
 
-// Add Firebase listener for bin-001
-const ref = database.ref('ecoflow/bin-001');
-ref.on('value', (snapshot) => {
-  const data = snapshot.val();
-  if (data) {
-    dustbinData['bin-001'] = {
-      name: data.name || 'VVCE Campus',
-      location: data.location || 'Main Entrance, VVCE Mysuru',
-      fillLevel: data.fillLevel || 0,
-      status: data.status || 'Low'
-    };
-
-    // Update appropriate view
-    if (document.querySelector('.details-container') && getCurrentBinId() === 'bin-001') {
-      updateDustbinDetails('bin-001');
-    } else {
-      updateHomePageCards();
-    }
-  }
-});
-
 document.addEventListener('DOMContentLoaded', () => {
-  if (document.querySelector('.details-container')) {
-    initDetailsPage();
-  } else if (document.querySelector('.dustbin-grid')) {
-    initHomePage();
-  }
+  const isDetailsPage = document.querySelector('.details-container');
+  const isHomePage = document.querySelector('.dustbin-grid');
+
+  if (isDetailsPage) initDetailsPage();
+  if (isHomePage) initHomePage();
+
+  // Firebase listener (moved here!)
+  const ref = database.ref('ecoflow/bin-001');
+  ref.on('value', (snapshot) => {
+    const data = snapshot.val();
+    if (data) {
+      dustbinData['bin-001'] = {
+        name: data.name || 'VVCE Campus',
+        location: data.location || 'Main Entrance, VVCE Mysuru',
+        fillLevel: data.fillLevel || 0,
+        status: data.status || 'Low'
+      };
+
+      if (isHomePage) updateHomePageCards();
+      const urlParams = new URLSearchParams(window.location.search);
+      const currentId = urlParams.get('id');
+      if (isDetailsPage && currentId === 'bin-001') {
+        updateDustbinDetails('bin-001');
+      }
+    }
+  });
 
   function initHomePage() {
     updateHomePageCards();
-    setInterval(updateHomePageCards, 2000);
   }
 
   function updateHomePageCards() {
@@ -66,10 +65,12 @@ document.addEventListener('DOMContentLoaded', () => {
       if (data) {
         const statusSpan = card.querySelector('.status-low, .status-medium, .status-high, .status-full');
         const fillLevelSpan = card.querySelector('.fill-level');
+
         if (statusSpan) {
           statusSpan.textContent = data.status;
           statusSpan.className = `status-${data.status.toLowerCase()}`;
         }
+
         if (fillLevelSpan) {
           fillLevelSpan.textContent = `${data.fillLevel}%`;
         }
@@ -78,21 +79,22 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function initDetailsPage() {
-    const binId = getCurrentBinId();
-    if (binId && dustbinData[binId]) {
-      updateDustbinDetails(binId);
+    const urlParams = new URLSearchParams(window.location.search);
+    const binId = urlParams.get('id');
 
-      // If it's not bin-001, simulate updates
-      if (binId !== 'bin-001') {
+    function waitForBinAndUpdate() {
+      if (dustbinData[binId]) {
+        updateDustbinDetails(binId);
         setInterval(() => {
-          simulateRealTimeData(binId);
+          if (binId !== 'bin-001') simulateRealTimeData(binId);
           updateDustbinDetails(binId);
         }, 2000);
+      } else {
+        setTimeout(waitForBinAndUpdate, 200);
       }
-    } else {
-      const header = document.querySelector('.details-header h1');
-      if (header) header.textContent = "Dustbin Not Found";
     }
+
+    waitForBinAndUpdate();
   }
 
   function updateDustbinDetails(binId) {
@@ -121,6 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function simulateRealTimeData(binId) {
+    if (binId === 'bin-001') return;
     let currentFill = dustbinData[binId].fillLevel;
     let newFill = currentFill + Math.floor(Math.random() * 5) - 2;
     newFill = Math.max(0, Math.min(100, newFill));
@@ -133,10 +136,5 @@ document.addEventListener('DOMContentLoaded', () => {
     if (level >= 75) return 'High';
     if (level >= 40) return 'Medium';
     return 'Low';
-  }
-
-  function getCurrentBinId() {
-    const urlParams = new URLSearchParams(window.location.search);
-    return urlParams.get('id');
   }
 });
